@@ -18,17 +18,17 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
-*/
+ */
 
 #if defined(_WIN32)
 
-#ifndef _CRT_SECURE_NO_WARNINGS
+#if !defined(_CRT_SECURE_NO_WARNINGS)
 #define _CRT_SECURE_NO_WARNINGS /* Disable deprecation warning in VS2005 */
 #endif
-#ifndef _CRT_SECURE_NO_DEPRECATE
+#if !defined(_CRT_SECURE_NO_DEPRECATE)
 #define _CRT_SECURE_NO_DEPRECATE
 #endif
-#ifdef WIN32_LEAN_AND_MEAN
+#if defined(WIN32_LEAN_AND_MEAN)
 #undef WIN32_LEAN_AND_MEAN /* Required for some functions (tray icons, ...) */
 #endif
 
@@ -44,7 +44,7 @@
  */
 #endif
 
-#ifndef IGNORE_UNUSED_RESULT
+#if !defined(IGNORE_UNUSED_RESULT)
 #define IGNORE_UNUSED_RESULT(a) ((void)((a) && 1))
 #endif
 
@@ -59,57 +59,57 @@
 #endif
 
 /* Use same defines as in civetweb.c before including system headers. */
-#ifndef _LARGEFILE_SOURCE
+#if !defined(_LARGEFILE_SOURCE)
 #define _LARGEFILE_SOURCE /* For fseeko(), ftello() */
 #endif
-#ifndef _FILE_OFFSET_BITS
+#if !defined(_FILE_OFFSET_BITS)
 #define _FILE_OFFSET_BITS 64 /* Use 64-bit file offsets by default */
 #endif
-#ifndef __STDC_FORMAT_MACROS
+#if !defined(__STDC_FORMAT_MACROS)
 #define __STDC_FORMAT_MACROS /* <inttypes.h> wants this for C++ */
 #endif
-#ifndef __STDC_LIMIT_MACROS
+#if !defined(__STDC_LIMIT_MACROS)
 #define __STDC_LIMIT_MACROS /* C++ wants that for INT64_MAX */
 #endif
 
-#include <string.h>
-#include <errno.h>
-#include <sys/stat.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <stddef.h>
-#include <stdarg.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 
 #include "civetweb.h"
 
+#undef printf
 #define printf                                                                 \
 	DO_NOT_USE_THIS_FUNCTION__USE_fprintf /* Required for unit testing */
 
-#if defined(_WIN32)                                                            \
-    && !defined(__SYMBIAN32__) /* WINDOWS / UNIX include block */
-#ifndef _WIN32_WINNT
+#if defined(_WIN32) && !defined(__SYMBIAN32__) /* WINDOWS include block */
+#if !defined(_WIN32_WINNT)
 #define _WIN32_WINNT 0x0501 /* for tdm-gcc so we can use getconsolewindow */
 #endif
 #undef UNICODE
+#include <io.h>
+#include <shlobj.h>
 #include <windows.h>
 #include <winsvc.h>
-#include <shlobj.h>
-#include <io.h>
 
 #define getcwd(a, b) (_getcwd(a, b))
 #if !defined(__MINGW32__)
 extern char *_getcwd(char *buf, size_t size);
 #endif
 
-#ifndef PATH_MAX
+#if !defined(PATH_MAX)
 #define PATH_MAX MAX_PATH
 #endif
 
-#ifndef S_ISDIR
+#if !defined(S_ISDIR)
 #define S_ISDIR(x) ((x)&_S_IFDIR)
 #endif
 
@@ -123,9 +123,9 @@ extern char *_getcwd(char *buf, size_t size);
 #else /* defined(_WIN32) && !defined(__SYMBIAN32__) - WINDOWS / UNIX include   \
          block */
 
-#include <unistd.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #define DIRSEP '/'
 #define WINCDECL
@@ -155,7 +155,7 @@ extern char *_getcwd(char *buf, size_t size);
 #endif /* DEBUG */
 #endif
 
-#ifndef PATH_MAX
+#if !defined(PATH_MAX)
 #define PATH_MAX (1024)
 #endif
 
@@ -182,9 +182,10 @@ static const char **g_add_domain; /* Default from init_server_name,
                                    * updated later from the server config */
 
 
-static char *g_system_info;                    /* Set by init_system_info() */
-static char g_config_file_name[PATH_MAX] = ""; /* Set by
-                                     *  process_command_line_arguments() */
+static char *g_system_info; /* Set by init_system_info() */
+static char g_config_file_name[PATH_MAX] =
+    ""; /* Set by
+         *  process_command_line_arguments() */
 
 static struct mg_context *g_ctx; /* Set by start_civetweb() */
 static struct tuser_data
@@ -247,7 +248,7 @@ die(const char *fmt, ...)
 }
 
 
-#ifdef WIN32
+#if defined(WIN32)
 static int MakeConsole(void);
 #endif
 
@@ -255,7 +256,7 @@ static int MakeConsole(void);
 static void
 show_server_name(void)
 {
-#ifdef WIN32
+#if defined(WIN32)
 	(void)MakeConsole();
 #endif
 
@@ -280,7 +281,7 @@ show_usage_and_exit(const char *exeName)
 	fprintf(stderr, "    %s [config_file]\n", exeName);
 	fprintf(stderr, "    %s [-option value ...]\n", exeName);
 	fprintf(stderr, "  Run as client:\n");
-	fprintf(stderr, "    %s -C\n", exeName);
+	fprintf(stderr, "    %s -C url\n", exeName);
 	fprintf(stderr, "  Show system information:\n");
 	fprintf(stderr, "    %s -I\n", exeName);
 	fprintf(stderr, "  Add user/change password:\n");
@@ -356,7 +357,7 @@ get_url_to_first_open_port(const struct mg_context *ctx)
 }
 
 
-#ifdef ENABLE_CREATE_CONFIG_FILE
+#if defined(ENABLE_CREATE_CONFIG_FILE)
 static void
 create_config_file(const struct mg_context *ctx, const char *path)
 {
@@ -717,60 +718,58 @@ read_config_file(const char *config_file, char **options)
 	}
 
 	/* Load config file settings first */
-	if (fp != NULL) {
-		fprintf(stdout, "Loading config file %s\n", config_file);
+	fprintf(stdout, "Loading config file %s\n", config_file);
 
-		/* Loop over the lines in config file */
-		while (fgets(line, sizeof(line), fp) != NULL) {
+	/* Loop over the lines in config file */
+	while (fgets(line, sizeof(line), fp) != NULL) {
 
-			if (!line_no && !memcmp(line, "\xEF\xBB\xBF", 3)) {
-				/* strip UTF-8 BOM */
-				p = line + 3;
-			} else {
-				p = line;
-			}
-			line_no++;
+		if (!line_no && !memcmp(line, "\xEF\xBB\xBF", 3)) {
+			/* strip UTF-8 BOM */
+			p = line + 3;
+		} else {
+			p = line;
+		}
+		line_no++;
 
-			/* Ignore empty lines and comments */
-			for (i = 0; isspace(*(unsigned char *)&line[i]);)
-				i++;
-			if (p[i] == '#' || p[i] == '\0') {
-				continue;
-			}
-
-			/* Skip spaces, \r and \n at the end of the line */
-			for (j = strlen(line) - 1;
-			     isspace(*(unsigned char *)&line[j])
-			         || iscntrl(*(unsigned char *)&line[j]);)
-				line[j--] = 0;
-
-			/* Find the space character between option name and value */
-			for (j = i; !isspace(*(unsigned char *)&line[j]) && (line[j] != 0);)
-				j++;
-
-			/* Terminate the string - then the string at (line+i) contains the
-			 * option name */
-			line[j] = 0;
-			j++;
-
-			/* Trim additional spaces between option name and value - then
-			 * (line+j) contains the option value */
-			while (isspace(line[j])) {
-				j++;
-			}
-
-			/* Set option */
-			if (!set_option(options, line + i, line + j)) {
-				fprintf(stderr,
-				        "%s: line %d is invalid, ignoring it:\n %s",
-				        config_file,
-				        (int)line_no,
-				        p);
-			}
+		/* Ignore empty lines and comments */
+		for (i = 0; isspace(*(unsigned char *)&line[i]);)
+			i++;
+		if (p[i] == '#' || p[i] == '\0') {
+			continue;
 		}
 
-		(void)fclose(fp);
+		/* Skip spaces, \r and \n at the end of the line */
+		for (j = strlen(line) - 1; isspace(*(unsigned char *)&line[j])
+		                           || iscntrl(*(unsigned char *)&line[j]);)
+			line[j--] = 0;
+
+		/* Find the space character between option name and value */
+		for (j = i; !isspace(*(unsigned char *)&line[j]) && (line[j] != 0);)
+			j++;
+
+		/* Terminate the string - then the string at (line+i) contains the
+		 * option name */
+		line[j] = 0;
+		j++;
+
+		/* Trim additional spaces between option name and value - then
+		 * (line+j) contains the option value */
+		while (isspace(line[j])) {
+			j++;
+		}
+
+		/* Set option */
+		if (!set_option(options, line + i, line + j)) {
+			fprintf(stderr,
+			        "%s: line %d is invalid, ignoring it:\n %s",
+			        config_file,
+			        (int)line_no,
+			        p);
+		}
 	}
+
+	(void)fclose(fp);
+
 	return 1;
 }
 
@@ -780,7 +779,7 @@ process_command_line_arguments(int argc, char *argv[], char **options)
 {
 	char *p;
 	size_t i, cmd_line_opts_start = 1;
-#ifdef CONFIG_FILE2
+#if defined(CONFIG_FILE2)
 	FILE *fp = NULL;
 #endif
 
@@ -813,7 +812,7 @@ process_command_line_arguments(int argc, char *argv[], char **options)
 	}
 	g_config_file_name[sizeof(g_config_file_name) - 1] = 0;
 
-#ifdef CONFIG_FILE2
+#if defined(CONFIG_FILE2)
 	fp = fopen(g_config_file_name, "r");
 
 	/* try alternate config file */
@@ -919,7 +918,7 @@ log_message(const struct mg_connection *conn, const char *message)
 static int
 is_path_absolute(const char *path)
 {
-#ifdef _WIN32
+#if defined(_WIN32)
 	return path != NULL
 	       && ((path[0] == '\\' && path[1] == '\\') || /* UNC path, e.g.
 	                                                      \\server\dir */
@@ -937,7 +936,7 @@ verify_existence(char **options, const char *option_name, int must_be_dir)
 	struct stat st;
 	const char *path = get_option(options, option_name);
 
-#ifdef _WIN32
+#if defined(_WIN32)
 	wchar_t wbuf[1024];
 	char mbbuf[1024];
 	int len;
@@ -945,20 +944,17 @@ verify_existence(char **options, const char *option_name, int must_be_dir)
 	if (path) {
 		memset(wbuf, 0, sizeof(wbuf));
 		memset(mbbuf, 0, sizeof(mbbuf));
-		len = MultiByteToWideChar(CP_UTF8,
-		                          0,
-		                          path,
-		                          -1,
-		                          wbuf,
-		                          (int)sizeof(wbuf) / sizeof(wbuf[0]) - 1);
+		len = MultiByteToWideChar(
+		    CP_UTF8, 0, path, -1, wbuf, sizeof(wbuf) / sizeof(wbuf[0]) - 1);
 		wcstombs(mbbuf, wbuf, sizeof(mbbuf) - 1);
 		path = mbbuf;
 		(void)len;
 	}
 #endif
 
-	if (path != NULL && (stat(path, &st) != 0
-	                     || ((S_ISDIR(st.st_mode) ? 1 : 0) != must_be_dir))) {
+	if (path != NULL
+	    && (stat(path, &st) != 0
+	        || ((S_ISDIR(st.st_mode) ? 1 : 0) != must_be_dir))) {
 		die("Invalid path for %s: [%s]: (%s). Make sure that path is either "
 		    "absolute, or it is relative to civetweb executable.",
 		    option_name,
@@ -1007,14 +1003,14 @@ set_absolute_path(char *options[],
 }
 
 
-#ifdef USE_LUA
+#if defined(USE_LUA)
 
 #include "civetweb_private_lua.h"
 
 #endif
 
 
-#ifdef USE_DUKTAPE
+#if defined(USE_DUKTAPE)
 
 #include "duktape.h"
 
@@ -1053,7 +1049,7 @@ static int
 run_client(const char *url_arg)
 {
 	/* connection data */
-	char *url = sdup(url_arg);
+	char *url = sdup(url_arg); /* OOM will cause program to exit */
 	char *host;
 	char *resource;
 	int is_ssl = 0;
@@ -1066,12 +1062,15 @@ run_client(const char *url_arg)
 	struct mg_connection *conn;
 	char ebuf[1024] = {0};
 
-	/* Check parameter */
-	if (!url) {
-		fprintf(stderr, "Out of memory\n");
-		return 0;
-	}
+#if 0 /* Unreachable code, since sdup will never return NULL */
+    /* Check out of memory */
+    if (!url) {
+        fprintf(stderr, "Out of memory\n");
+        return 0;
+    }
+#endif
 
+	/* Check parameter */
 	if (!strncmp(url, "http://", 7)) {
 		host = url + 7;
 		port = 80;
@@ -1200,7 +1199,7 @@ sanitize_options(char *options[] /* server options */,
 	set_absolute_path(options, "access_log_file", arg0);
 	set_absolute_path(options, "error_log_file", arg0);
 	set_absolute_path(options, "global_auth_file", arg0);
-#ifdef USE_LUA
+#if defined(USE_LUA)
 	set_absolute_path(options, "lua_preload_file", arg0);
 #endif
 	set_absolute_path(options, "ssl_certificate", arg0);
@@ -1211,7 +1210,7 @@ sanitize_options(char *options[] /* server options */,
 	verify_existence(options, "ssl_certificate", 0);
 	verify_existence(options, "ssl_ca_path", 1);
 	verify_existence(options, "ssl_ca_file", 0);
-#ifdef USE_LUA
+#if defined(USE_LUA)
 	verify_existence(options, "lua_preload_file", 0);
 #endif
 }
@@ -1229,7 +1228,7 @@ start_civetweb(int argc, char *argv[])
 	 * This is very useful for diagnosis. */
 	if (argc > 1 && !strcmp(argv[1], "-I")) {
 
-#ifdef WIN32
+#if defined(WIN32)
 		(void)MakeConsole();
 #endif
 		fprintf(stdout,
@@ -1275,11 +1274,11 @@ start_civetweb(int argc, char *argv[])
 	 * is specified */
 	if (argc > 1 && !strcmp(argv[1], "-L")) {
 
-#ifdef USE_LUA
+#if defined(USE_LUA)
 		if (argc != 3) {
 			show_usage_and_exit(argv[0]);
 		}
-#ifdef WIN32
+#if defined(WIN32)
 		(void)MakeConsole();
 #endif
 		exit(run_lua(argv[2]));
@@ -1293,11 +1292,11 @@ start_civetweb(int argc, char *argv[])
 	/* Call Duktape, if -E option is specified */
 	if (argc > 1 && !strcmp(argv[1], "-E")) {
 
-#ifdef USE_DUKTAPE
+#if defined(USE_DUKTAPE)
 		if (argc != 3) {
 			show_usage_and_exit(argv[0]);
 		}
-#ifdef WIN32
+#if defined(WIN32)
 		(void)MakeConsole();
 #endif
 		exit(run_duktape(argv[2]));
@@ -1309,8 +1308,9 @@ start_civetweb(int argc, char *argv[])
 	}
 
 	/* Show usage if -h or --help options are specified */
-	if (argc == 2 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "-H")
-	                  || !strcmp(argv[1], "--help"))) {
+	if (argc == 2
+	    && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "-H")
+	        || !strcmp(argv[1], "--help"))) {
 		show_usage_and_exit(argv[0]);
 	}
 
@@ -1326,6 +1326,31 @@ start_civetweb(int argc, char *argv[])
 	/* Setup signal handler: quit on Ctrl-C */
 	signal(SIGTERM, signal_handler);
 	signal(SIGINT, signal_handler);
+
+#if defined(DAEMONIZE)
+	/* Daemonize */
+	for (i = 0; options[i] != NULL; i++) {
+		if (strcmp(options[i],"daemonize") ==  0) {
+			if(options[i+1] != NULL) {
+				if(mg_strcasecmp(options[i+1], "yes") == 0) {
+					fprintf(stdout, "daemonize.\n");
+					if(daemon(0,0) != 0) {
+						fprintf(stdout, "Faild to daemonize main process.\n");
+						exit(EXIT_FAILURE);
+					}
+					FILE *fp;
+					if((fp=fopen(PID_FILE,"w")) == 0) {
+						fprintf(stdout, "Can not open %s.\n", PID_FILE);
+						exit(EXIT_FAILURE);
+					}
+					fprintf(fp,"%d",getpid());
+					fclose(fp);
+				}
+			}
+			break;
+		}
+	}
+#endif
 
 	/* Initialize user data */
 	memset(&g_user_data, 0, sizeof(g_user_data));
@@ -1388,7 +1413,7 @@ stop_civetweb(void)
 }
 
 
-#ifdef _WIN32
+#if defined(_WIN32)
 /* Win32 has a small GUI.
  * Define some GUI elements and Windows message handlers. */
 
@@ -1531,6 +1556,41 @@ struct dlg_proc_param {
 	BOOL (*fRetry)(struct dlg_proc_param *data);
 };
 
+struct dlg_header_param {
+	DLGTEMPLATE dlg_template; /* 18 bytes */
+	WORD menu, dlg_class;
+	wchar_t caption[1];
+	WORD fontsiz;
+	wchar_t fontface[7];
+};
+
+static struct dlg_header_param
+GetDlgHeader(const short width)
+{
+#if defined(_MSC_VER)
+/* disable MSVC warning C4204 (non-constant used to initialize structure) */
+#pragma warning(push)
+#pragma warning(disable : 4204)
+#endif /* if defined(_MSC_VER) */
+	struct dlg_header_param dialog_header = {{WS_CAPTION | WS_POPUP | WS_SYSMENU
+	                                              | WS_VISIBLE | DS_SETFONT
+	                                              | WS_DLGFRAME,
+	                                          WS_EX_TOOLWINDOW,
+	                                          0,
+	                                          200,
+	                                          200,
+	                                          width,
+	                                          0},
+	                                         0,
+	                                         0,
+	                                         L"",
+	                                         8,
+	                                         L"Tahoma"};
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif /* if defined(_MSC_VER) */
+	return dialog_header;
+}
 
 /* Dialog proc for settings dialog */
 static INT_PTR CALLBACK
@@ -1717,7 +1777,7 @@ InputDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 			if (hIn) {
 				/* Get content of input line */
 				GetWindowText(hIn, inBuf->buffer, (int)inBuf->buflen);
-				if (strlen(inBuf->buffer) > 0) {
+				if (inBuf->buffer[0] != 0) {
 					/* Input dialog is not empty. */
 					EndDialog(hDlg, IDOK);
 				}
@@ -1833,25 +1893,7 @@ get_password(const char *user,
 	short y;
 	static struct dlg_proc_param s_dlg_proc_param;
 
-	static struct {
-		DLGTEMPLATE dlg_template; /* 18 bytes */
-		WORD menu, dlg_class;
-		wchar_t caption[1];
-		WORD fontsiz;
-		wchar_t fontface[7];
-	} dialog_header = {{WS_CAPTION | WS_POPUP | WS_SYSMENU | WS_VISIBLE
-	                        | DS_SETFONT | WS_DLGFRAME,
-	                    WS_EX_TOOLWINDOW,
-	                    0,
-	                    200,
-	                    200,
-	                    WIDTH,
-	                    0},
-	                   0,
-	                   0,
-	                   L"",
-	                   8,
-	                   L"Tahoma"};
+	const struct dlg_header_param dialog_header = GetDlgHeader(WIDTH);
 
 	DEBUG_ASSERT((user != NULL) && (realm != NULL) && (passwd != NULL));
 
@@ -1880,7 +1922,8 @@ get_password(const char *user,
 
 	/* Create the dialog */
 	(void)memset(mem, 0, sizeof(mem));
-	(void)memcpy(mem, &dialog_header, sizeof(dialog_header));
+	p = mem;
+	(void)memcpy(p, &dialog_header, sizeof(dialog_header));
 	p = mem + sizeof(dialog_header);
 
 	y = HEIGHT;
@@ -1980,9 +2023,9 @@ get_password(const char *user,
 	s_dlg_proc_param.name = "Modify password";
 	s_dlg_proc_param.fRetry = NULL;
 
-	ok =
-	    (IDOK == DialogBoxIndirectParam(
-	                 NULL, dia, NULL, InputDlgProc, (LPARAM)&s_dlg_proc_param));
+	ok = (IDOK
+	      == DialogBoxIndirectParam(
+	             NULL, dia, NULL, InputDlgProc, (LPARAM)&s_dlg_proc_param));
 
 	s_dlg_proc_param.hWnd = NULL;
 	s_dlg_proc_param.guard = 0;
@@ -2127,25 +2170,7 @@ show_settings_dialog()
 	short width, x, y;
 	static struct dlg_proc_param s_dlg_proc_param;
 
-	static struct {
-		DLGTEMPLATE dlg_template; /* 18 bytes */
-		WORD menu, dlg_class;
-		wchar_t caption[1];
-		WORD fontsiz;
-		wchar_t fontface[7];
-	} dialog_header = {{WS_CAPTION | WS_POPUP | WS_SYSMENU | WS_VISIBLE
-	                        | DS_SETFONT | WS_DLGFRAME,
-	                    WS_EX_TOOLWINDOW,
-	                    0,
-	                    200,
-	                    200,
-	                    WIDTH,
-	                    0},
-	                   0,
-	                   0,
-	                   L"",
-	                   8,
-	                   L"Tahoma"};
+	const struct dlg_header_param dialog_header = GetDlgHeader(WIDTH);
 
 	if (s_dlg_proc_param.guard == 0) {
 		memset(&s_dlg_proc_param, 0, sizeof(s_dlg_proc_param));
@@ -2156,7 +2181,8 @@ show_settings_dialog()
 	}
 
 	(void)memset(mem, 0, sizeof(mem));
-	(void)memcpy(mem, &dialog_header, sizeof(dialog_header));
+	p = mem;
+	(void)memcpy(p, &dialog_header, sizeof(dialog_header));
 	p = mem + sizeof(dialog_header);
 
 	options = mg_get_valid_options();
@@ -2320,25 +2346,7 @@ change_password_file()
 	const char *domain = mg_get_option(g_ctx, "authentication_domain");
 	static struct dlg_proc_param s_dlg_proc_param;
 
-	static struct {
-		DLGTEMPLATE dlg_template; /* 18 bytes */
-		WORD menu, dlg_class;
-		wchar_t caption[1];
-		WORD fontsiz;
-		wchar_t fontface[7];
-	} dialog_header = {{WS_CAPTION | WS_POPUP | WS_SYSMENU | WS_VISIBLE
-	                        | DS_SETFONT | WS_DLGFRAME,
-	                    WS_EX_TOOLWINDOW,
-	                    0,
-	                    200,
-	                    200,
-	                    WIDTH,
-	                    0},
-	                   0,
-	                   0,
-	                   L"",
-	                   8,
-	                   L"Tahoma"};
+	const struct dlg_header_param dialog_header = GetDlgHeader(WIDTH);
 
 	if (s_dlg_proc_param.guard == 0) {
 		memset(&s_dlg_proc_param, 0, sizeof(s_dlg_proc_param));
@@ -2356,7 +2364,8 @@ change_password_file()
 	of.lpstrInitialDir = mg_get_option(g_ctx, "document_root");
 	of.Flags = OFN_CREATEPROMPT | OFN_NOCHANGEDIR | OFN_HIDEREADONLY;
 
-	if (IDOK != GetSaveFileName(&of)) {
+	if (!GetSaveFileName(&of)) {
+		/* Cancel/Close by user */
 		s_dlg_proc_param.guard = 0;
 		return;
 	}
@@ -2373,7 +2382,8 @@ change_password_file()
 	do {
 		s_dlg_proc_param.hWnd = NULL;
 		(void)memset(mem, 0, sizeof(mem));
-		(void)memcpy(mem, &dialog_header, sizeof(dialog_header));
+		p = mem;
+		(void)memcpy(p, &dialog_header, sizeof(dialog_header));
 		p = mem + sizeof(dialog_header);
 
 		f = fopen(path, "r+");
@@ -2504,12 +2514,11 @@ change_password_file()
 		s_dlg_proc_param.name = path;
 		s_dlg_proc_param.fRetry = NULL;
 
-	} while ((IDOK == DialogBoxIndirectParam(NULL,
-	                                         dia,
-	                                         NULL,
-	                                         PasswordDlgProc,
-	                                         (LPARAM)&s_dlg_proc_param))
-	         && (!g_exit_flag));
+	} while (
+	    (IDOK
+	     == DialogBoxIndirectParam(
+	            NULL, dia, NULL, PasswordDlgProc, (LPARAM)&s_dlg_proc_param))
+	    && (!g_exit_flag));
 
 	s_dlg_proc_param.hWnd = NULL;
 	s_dlg_proc_param.guard = 0;
@@ -2560,25 +2569,7 @@ show_system_info()
 	short y;
 	static struct dlg_proc_param s_dlg_proc_param;
 
-	static struct {
-		DLGTEMPLATE dlg_template; /* 18 bytes */
-		WORD menu, dlg_class;
-		wchar_t caption[1];
-		WORD fontsiz;
-		wchar_t fontface[7];
-	} dialog_header = {{WS_CAPTION | WS_POPUP | WS_SYSMENU | WS_VISIBLE
-	                        | DS_SETFONT | WS_DLGFRAME,
-	                    WS_EX_TOOLWINDOW,
-	                    0,
-	                    200,
-	                    200,
-	                    WIDTH,
-	                    0},
-	                   0,
-	                   0,
-	                   L"",
-	                   8,
-	                   L"Tahoma"};
+	const struct dlg_header_param dialog_header = GetDlgHeader(WIDTH);
 
 	/* Only allow one instance of this dialog to be open. */
 	if (s_dlg_proc_param.guard == 0) {
@@ -2591,7 +2582,8 @@ show_system_info()
 
 	/* Create the dialog */
 	(void)memset(mem, 0, sizeof(mem));
-	(void)memcpy(mem, &dialog_header, sizeof(dialog_header));
+	p = mem;
+	(void)memcpy(p, &dialog_header, sizeof(dialog_header));
 	p = mem + sizeof(dialog_header);
 
 	y = HEIGHT;
@@ -2649,9 +2641,9 @@ show_system_info()
 	s_dlg_proc_param.fRetry = sysinfo_reload;
 	s_dlg_proc_param.idRetry = ID_CONTROLS + 1; /* Reload field with this ID */
 
-	ok =
-	    (IDOK == DialogBoxIndirectParam(
-	                 NULL, dia, NULL, InputDlgProc, (LPARAM)&s_dlg_proc_param));
+	ok = (IDOK
+	      == DialogBoxIndirectParam(
+	             NULL, dia, NULL, InputDlgProc, (LPARAM)&s_dlg_proc_param));
 
 	s_dlg_proc_param.hWnd = NULL;
 	s_dlg_proc_param.guard = 0;
@@ -2685,8 +2677,8 @@ manage_service(int action)
 	} else if (action == ID_INSTALL_SERVICE) {
 		path[sizeof(path) - 1] = 0;
 		GetModuleFileName(NULL, path, sizeof(path) - 1);
-		strncat(path, " ", sizeof(path) - 1);
-		strncat(path, service_magic_argument, sizeof(path) - 1);
+		strncat(path, " ", sizeof(path) - 1 - strlen(path));
+		strncat(path, service_magic_argument, sizeof(path) - 1 - strlen(path));
 		hService = CreateService(hSCM,
 		                         service_name,
 		                         service_name,
@@ -2861,8 +2853,9 @@ static int
 MakeConsole(void)
 {
 	DWORD err;
-	int ok = (GetConsoleWindow() != NULL);
-	if (!ok) {
+	HANDLE hConWnd = GetConsoleWindow();
+
+	if (hConWnd == NULL) {
 		if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
 			FreeConsole();
 			if (!AllocConsole()) {
@@ -2877,19 +2870,24 @@ MakeConsole(void)
 			AttachConsole(GetCurrentProcessId());
 		}
 
-		ok = (GetConsoleWindow() != NULL);
-		if (ok) {
+		/* Retry to get a console handle */
+		hConWnd = GetConsoleWindow();
+
+		if (hConWnd != NULL) {
+			/* Reopen console handles according to
+			 * https://stackoverflow.com/questions/9020790/using-stdin-with-an-allocconsole
+			 */
 			freopen("CONIN$", "r", stdin);
 			freopen("CONOUT$", "w", stdout);
 			freopen("CONOUT$", "w", stderr);
 		}
 	}
 
-	if (ok) {
+	if (hConWnd != NULL) {
 		SetConsoleTitle(g_server_name);
 	}
 
-	return ok;
+	return (hConWnd != NULL);
 }
 
 
@@ -3033,12 +3031,12 @@ main(int argc, char *argv[])
 
 	/* Add version menu item */
 	[menu
-	    addItem:
-	        [[[NSMenuItem alloc]
-	            /*initWithTitle:[NSString stringWithFormat:@"%s", server_name]*/
-	            initWithTitle:[NSString stringWithUTF8String:g_server_name]
-	                   action:@selector(noexist)
-	            keyEquivalent:@""] autorelease]];
+	    addItem:[[[NSMenuItem alloc]
+	                /*initWithTitle:[NSString stringWithFormat:@"%s",
+	                   server_name]*/
+	                initWithTitle:[NSString stringWithUTF8String:g_server_name]
+	                       action:@selector(noexist)
+	                keyEquivalent:@""] autorelease]];
 
 	/* Add configuration menu item */
 	[menu addItem:[[[NSMenuItem alloc] initWithTitle:@"Edit configuration"

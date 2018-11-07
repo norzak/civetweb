@@ -296,9 +296,11 @@ add_c_compiler_flag(/W4) # VisualStudio highest warning level
 #Warnings: Disable some warnings
 add_c_compiler_flag(-Wno-padded) # padding in structures by compiler
 add_c_compiler_flag(-Wno-unused-macros) # so what?
+Check_C_Compiler_Flag( HAVE_NO_RESERVED_ID_MACROS -Wno-reserved-id-macros)
+if (HAVE_NO_RESERVED_ID_MACROS)
 add_c_compiler_flag(-Wno-reserved-id-macros) # for system headers
+endif (HAVE_NO_RESERVED_ID_MACROS)
 add_c_compiler_flag(-Wno-format-nonliteral) # printf(myFormatStringVar, ...)
-add_c_compiler_flag(-Wno-date-time) # using __DATE__ once
 add_c_compiler_flag(-Wno-cast-qual) # const cast
 add_c_compiler_flag(/Wd4820) # padding
 
@@ -307,12 +309,12 @@ if (MINGW)
 endif()
 if (NOT CIVETWEB_ALLOW_WARNINGS)
   add_c_compiler_flag(-Werror)
+  add_c_compiler_flag(/WX)
 endif()
-add_c_compiler_flag(/WX)
 add_c_compiler_flag(-pedantic-errors)
 add_c_compiler_flag(-fvisibility=hidden)
 add_c_compiler_flag(-fstack-protector-strong RELEASE)
-add_c_compiler_flag(-flto RELEASE)
+#add_c_compiler_flag(-flto RELEASE)
 if (${CIVETWEB_ENABLE_ASAN})
 add_c_compiler_flag(-fsanitize=undefined DEBUG)
 add_c_compiler_flag(-fsanitize=address DEBUG)
@@ -376,8 +378,8 @@ if (CIVETWEB_ENABLE_CXX)
   endif()
   if (NOT CIVETWEB_ALLOW_WARNINGS)
     add_cxx_compiler_flag(-Werror)
+    add_cxx_compiler_flag(/WX)
   endif()
-  add_cxx_compiler_flag(/WX)
   add_cxx_compiler_flag(-pedantic-errors)
   add_cxx_compiler_flag(-fvisibility=hidden)
   add_cxx_compiler_flag(-fstack-protector-strong RELEASE)

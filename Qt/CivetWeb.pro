@@ -13,7 +13,9 @@ SOURCES += \
     ../src/mod_duktape.inl \
     ../src/timer.inl \
     ../src/civetweb.c \
-    ../src/main.c
+    ../src/main.c \
+    ../src/mod_zlib.inl \
+    ../src/mod_lua_shared.inl
 
 #include(deployment.pri)
 #qtcAddDeployment()
@@ -47,6 +49,9 @@ INCLUDEPATH +=  \
 DEFINES += USE_LUA
 DEFINES += USE_LUA_SHARED
 LIBS += -llua5.2
+
+DEFINES += USE_ZLIB
+LIBS += -lz
 }
 
 #To build with duktape support:

@@ -25,14 +25,14 @@
 #endif
 #endif
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdarg.h>
-#include <string.h>
 #include <stdint.h>
-#include <time.h>
-#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
 
 #include "public_server.h"
 #include <civetweb.h>
@@ -891,6 +891,37 @@ request_test_handler(struct mg_connection *conn, void *cbdata)
 }
 
 
+/* Return the same as request_test_handler using new interfaces */
+static int
+request_test_handler2(struct mg_connection *conn, void *cbdata)
+{
+	int i;
+	const char *chunk_data = "123456789A123456789B123456789C";
+	const struct mg_request_info *ri;
+	struct mg_context *ctx;
+	void *ud;
+
+	ctx = mg_get_context(conn);
+	ud = mg_get_user_data(ctx);
+	ri = mg_get_request_info(conn);
+
+	ck_assert(ri != NULL);
+	ck_assert(ctx == g_ctx);
+	ck_assert(ud == &g_ctx);
+
+	mg_send_http_ok(conn, "text/plain", -1);
+
+	for (i = 1; i <= 10; i++) {
+		mg_send_chunk(conn, chunk_data, (unsigned)i);
+	}
+
+	mg_send_chunk(conn, 0, 0);
+	mark_point();
+
+	return 200;
+}
+
+
 #ifdef USE_WEBSOCKET
 /****************************************************************************/
 /* WEBSOCKET SERVER                                                         */
@@ -1134,7 +1165,7 @@ websocket_client_close_handler(const struct mg_connection *conn,
 
 START_TEST(test_request_handlers)
 {
-	char ebuf[100];
+	char ebuf[1024];
 	struct mg_context *ctx;
 	struct mg_connection *client_conn;
 	const struct mg_response_info *client_ri;
@@ -1170,11 +1201,20 @@ START_TEST(test_request_handlers)
 	const char *opt;
 	FILE *f;
 	const char *plain_file_content;
-	const char *encoded_file_content;
 	const char *cgi_script_content;
 	const char *expected_cgi_result;
 	int opt_idx = 0;
 	struct stat st;
+
+	const char encoded_file_content[] = "\x1f\x8b\x08\x08\xf8"
+	                                    "\x9d\xcb\x55\x00\x00"
+	                                    "test_gz.txt"
+	                                    "\x00\x01\x11\x00\xee\xff"
+	                                    "zipped text file"
+	                                    "\x0a\x34\x5f\xcc\x49"
+	                                    "\x11\x00\x00\x00";
+	size_t encoded_file_content_len = sizeof(encoded_file_content);
+
 
 #if !defined(NO_SSL)
 	const char *ssl_cert = locate_ssl_cert();
@@ -1191,7 +1231,7 @@ START_TEST(test_request_handlers)
 	struct mg_connection *ws_client4_conn = NULL;
 #endif
 
-	char cmd_buf[256];
+	char cmd_buf[1024];
 	char *cgi_env_opt;
 
 	mark_point();
@@ -1212,7 +1252,7 @@ START_TEST(test_request_handlers)
 #endif
 	OPTIONS[opt_idx++] = "cgi_environment";
 	cgi_env_opt = (char *)calloc(1, 4096 /* CGI_ENVIRONMENT_SIZE */);
-	ck_assert_ptr_ne(cgi_env_opt, NULL);
+	ck_assert(cgi_env_opt != NULL);
 	cgi_env_opt[0] = 'x';
 	cgi_env_opt[1] = '=';
 	memset(cgi_env_opt + 2, 'y', 4090); /* Add large env field, so the server
@@ -1281,6 +1321,8 @@ START_TEST(test_request_handlers)
 		                       request_test_handler,
 		                       (void *)(ptrdiff_t)i);
 	}
+
+	mg_set_request_handler(ctx, "/handler2", request_test_handler2, NULL);
 
 #ifdef USE_WEBSOCKET
 	mg_set_websocket_handler(ctx,
@@ -1383,9 +1425,15 @@ START_TEST(test_request_handlers)
 	client_ri = mg_get_response_info(client_conn);
 
 	ck_assert(client_ri != NULL);
-	ck_assert_int_eq(client_ri->status_code, 302);
+	ck_assert((client_ri->status_code == 301) || (client_ri->status_code == 302)
+	          || (client_ri->status_code == 303)
+	          || (client_ri->status_code == 307)
+	          || (client_ri->status_code == 308)); /* is a redirect code */
+	/*
+	// A redirect may have a body, or not
 	i = mg_read(client_conn, buf, sizeof(buf));
 	ck_assert_int_eq(i, -1);
+	*/
 	mg_close_connection(client_conn);
 #endif
 
@@ -1411,9 +1459,15 @@ START_TEST(test_request_handlers)
 	client_ri = mg_get_response_info(client_conn);
 
 	ck_assert(client_ri != NULL);
-	ck_assert_int_eq(client_ri->status_code, 302);
+	ck_assert((client_ri->status_code == 301) || (client_ri->status_code == 302)
+	          || (client_ri->status_code == 303)
+	          || (client_ri->status_code == 307)
+	          || (client_ri->status_code == 308)); /* is a redirect code */
+	/*
+	// A redirect may have a body, or not
 	i = mg_read(client_conn, buf, sizeof(buf));
 	ck_assert_int_eq(i, -1);
+	*/
 	mg_close_connection(client_conn);
 #endif
 
@@ -1426,8 +1480,12 @@ START_TEST(test_request_handlers)
 #else
 	f = fopen("test.txt", "w");
 #endif
+	ck_assert(f != NULL);
 	plain_file_content = "simple text file\n";
-	fwrite(plain_file_content, 17, 1, f);
+	i = (int)strlen(plain_file_content);
+	ck_assert_int_eq(i, 17);
+
+	fwrite(plain_file_content, i, 1, f);
 	fclose(f);
 
 #ifdef _WIN32
@@ -1435,12 +1493,10 @@ START_TEST(test_request_handlers)
 #else
 	f = fopen("test_gz.txt.gz", "w");
 #endif
-	encoded_file_content = "\x1f\x8b\x08\x08\xf8\x9d\xcb\x55\x00\x00"
-	                       "test_gz.txt"
-	                       "\x00\x01\x11\x00\xee\xff"
-	                       "zipped text file"
-	                       "\x0a\x34\x5f\xcc\x49\x11\x00\x00\x00";
-	fwrite(encoded_file_content, 1, 52, f);
+	ck_assert(f != NULL);
+	ck_assert_uint_ge(encoded_file_content_len, 52);
+	encoded_file_content_len = 52;
+	fwrite(encoded_file_content, 1, encoded_file_content_len, f);
 	fclose(f);
 
 #ifdef _WIN32
@@ -1772,6 +1828,82 @@ START_TEST(test_request_handlers)
 	ck_assert_str_eq(buf, expected);
 	mg_close_connection(client_conn);
 
+	/* Get data from handler2 */
+	client_conn =
+	    mg_connect_client("localhost", ipv4_port, 0, ebuf, sizeof(ebuf));
+
+	ck_assert_str_eq(ebuf, "");
+	ck_assert(client_conn != NULL);
+
+	mg_printf(client_conn,
+	          "GET /handler2 HTTP/1.1\r\n"
+	          "Host: localhost\r\n"
+	          "\r\n",
+	          ipv4_port);
+
+	i = mg_get_response(client_conn, ebuf, sizeof(ebuf), 10000);
+	ck_assert_int_ge(i, 0);
+	ck_assert_str_eq(ebuf, "");
+
+	client_ri = mg_get_response_info(client_conn);
+
+	ck_assert(client_ri != NULL);
+	ck_assert_int_eq(client_ri->status_code, 200);
+	i = mg_read(client_conn, buf, sizeof(buf));
+	ck_assert_int_eq(i, (int)strlen(expected));
+	buf[i] = 0;
+	ck_assert_str_eq(buf, expected);
+	mg_close_connection(client_conn);
+
+	/* Get data non existing handler (will return 404) */
+	client_conn =
+	    mg_connect_client("localhost", ipv4_port, 0, ebuf, sizeof(ebuf));
+
+	ck_assert_str_eq(ebuf, "");
+	ck_assert(client_conn != NULL);
+
+	mg_printf(client_conn,
+	          "GET /unknown_url HTTP/1.1\r\n"
+	          "Host: localhost\r\n"
+	          "\r\n",
+	          ipv4_port);
+
+	i = mg_get_response(client_conn, ebuf, sizeof(ebuf), 10000);
+	ck_assert_int_ge(i, 0);
+	ck_assert_str_eq(ebuf, "");
+
+	client_ri = mg_get_response_info(client_conn);
+
+	ck_assert(client_ri != NULL);
+	ck_assert_int_eq(client_ri->status_code, 404);
+	mg_close_connection(client_conn);
+
+	/* Get data from handler2, but only read a part of it */
+	client_conn =
+	    mg_connect_client("localhost", ipv4_port, 0, ebuf, sizeof(ebuf));
+
+	ck_assert_str_eq(ebuf, "");
+	ck_assert(client_conn != NULL);
+
+	mg_printf(client_conn,
+	          "GET /handler2 HTTP/1.1\r\n"
+	          "Host: localhost\r\n"
+	          "\r\n",
+	          ipv4_port);
+
+	i = mg_get_response(client_conn, ebuf, sizeof(ebuf), 10000);
+	ck_assert_int_ge(i, 0);
+	ck_assert_str_eq(ebuf, "");
+
+	client_ri = mg_get_response_info(client_conn);
+
+	ck_assert(client_ri != NULL);
+	ck_assert_int_eq(client_ri->status_code, 200);
+	i = mg_read(client_conn, buf, 7);
+	ck_assert_int_eq(i, 7);
+	ck_assert(0 == memcmp(buf, expected, 7));
+	mg_close_connection(client_conn);
+
 
 /* Websocket test */
 #ifdef USE_WEBSOCKET
@@ -1811,9 +1943,8 @@ START_TEST(test_request_handlers)
 	                          "data1",
 	                          5);
 
-	wait_not_null(
-	    &(ws_client1_data
-	          .data)); /* Wait for the websocket acknowledge message */
+	wait_not_null(&(
+	    ws_client1_data.data)); /* Wait for the websocket acknowledge message */
 	ck_assert_int_eq(ws_client1_data.closed, 0);
 	ck_assert_int_eq(ws_client2_data.closed, 0);
 	ck_assert(ws_client2_data.data == NULL);
@@ -1873,9 +2004,8 @@ START_TEST(test_request_handlers)
 	                          "data2",
 	                          5);
 
-	wait_not_null(
-	    &(ws_client1_data
-	          .data)); /* Wait for the websocket acknowledge message */
+	wait_not_null(&(
+	    ws_client1_data.data)); /* Wait for the websocket acknowledge message */
 
 	ck_assert(ws_client1_data.closed == 0);
 	ck_assert(ws_client2_data.closed == 0);
@@ -2063,7 +2193,7 @@ START_TEST(test_request_handlers)
 	ws_client4_data.data = NULL;
 	ws_client4_data.len = 0;
 
-/* stop the server without closing this connection */
+	/* stop the server without closing this connection */
 
 #endif
 
@@ -2276,12 +2406,17 @@ field_get(const char *key,
 
 static const char *myfile_content = "Content of myfile.txt\r\n";
 static const int myfile_content_rep = 500;
+static int myfile_content_len = 23; /* (int)strlen(myfile_content); */
 
 
 static int
 field_store(const char *path, long long file_size, void *user_data)
 {
 	FILE *f;
+
+	ck_assert_int_eq(myfile_content_len, 23);
+	ck_assert_int_eq(myfile_content_len, (int)strlen(myfile_content));
+
 	ck_assert_ptr_eq(user_data, (void *)&g_field_found_return);
 	ck_assert_int_ge(g_field_step, 100);
 
@@ -2294,7 +2429,7 @@ field_store(const char *path, long long file_size, void *user_data)
 		ck_assert_ptr_ne(f, NULL);
 		if (f) {
 			char buf[32] = {0};
-			int i = (int)fread(buf, 1, 31, f);
+			int i = (int)fread(buf, 1, sizeof(buf) - 1, f);
 			ck_assert_int_eq(i, 9);
 			fclose(f);
 			ck_assert_str_eq(buf, "storetest");
@@ -2302,8 +2437,8 @@ field_store(const char *path, long long file_size, void *user_data)
 		break;
 	case 102:
 		ck_assert_str_eq(path, "file2store.txt");
-		ck_assert_uint_eq(23, strlen(myfile_content));
-		ck_assert_int_eq(file_size, 23 * myfile_content_rep);
+		ck_assert_int_eq(myfile_content_len, (int)strlen(myfile_content));
+		ck_assert_int_eq(file_size, myfile_content_len * myfile_content_rep);
 #ifdef _WIN32
 		f = fopen(path, "rb");
 #else
@@ -2314,11 +2449,11 @@ field_store(const char *path, long long file_size, void *user_data)
 			char buf[32] = {0};
 			int r, i;
 			for (r = 0; r < myfile_content_rep; r++) {
-				i = (int)fread(buf, 1, 23, f);
-				ck_assert_int_eq(i, 23);
+				i = (int)fread(buf, 1, myfile_content_len, f);
+				ck_assert_int_eq(i, myfile_content_len);
 				ck_assert_str_eq(buf, myfile_content);
 			}
-			i = (int)fread(buf, 1, 23, f);
+			i = (int)fread(buf, 1, myfile_content_len, f);
 			ck_assert_int_eq(i, 0);
 			fclose(f);
 		}
@@ -2458,10 +2593,10 @@ START_TEST(test_handle_form)
 	const char *OPTIONS[8];
 	const char *opt;
 	int opt_idx = 0;
-	char ebuf[100];
+	char ebuf[1024];
 	const char *multipart_body;
 	const char *boundary;
-	size_t body_len, body_sent, chunk_len;
+	size_t body_len, body_sent, chunk_len, bound_len;
 	int sleep_cnt;
 
 	mark_point();
@@ -2941,11 +3076,12 @@ START_TEST(test_handle_form)
 	/* sending megabytes to localhost does not always work in CI test
 	 * environments (depending on the network stack) */
 	body_sent = 0;
+	bound_len = strlen(boundary);
 	do {
 		send_chunk_string(client_conn, "ignore\r\n");
 		body_sent += 8;
 		/* send some strings that are almost boundaries */
-		for (chunk_len = 1; chunk_len < strlen(boundary); chunk_len++) {
+		for (chunk_len = 1; chunk_len < bound_len; chunk_len++) {
 			/* chunks from 1 byte to strlen(boundary)-1 */
 			send_chunk_stringl(client_conn, boundary, (unsigned int)chunk_len);
 			body_sent += chunk_len;
@@ -3034,7 +3170,7 @@ START_TEST(test_http_auth)
 	const char *str;
 	size_t len;
 	int i;
-	char HA1[256], HA2[256], HA[256];
+	char HA1[256], HA2[256];
 	char HA1_md5_buf[33], HA2_md5_buf[33], HA_md5_buf[33];
 	char *HA1_md5_ret, *HA2_md5_ret, *HA_md5_ret;
 	const char *nc = "00000001";
@@ -3155,7 +3291,6 @@ START_TEST(test_http_auth)
 	       (size_t)((ptrdiff_t)(str) - (ptrdiff_t)(auth_request + len)));
 	memset(HA1, 0, sizeof(HA1));
 	memset(HA2, 0, sizeof(HA2));
-	memset(HA, 0, sizeof(HA));
 	memset(HA1_md5_buf, 0, sizeof(HA1_md5_buf));
 	memset(HA2_md5_buf, 0, sizeof(HA2_md5_buf));
 	memset(HA_md5_buf, 0, sizeof(HA_md5_buf));
@@ -3760,8 +3895,13 @@ START_TEST(test_error_log_file)
 
 	client_ri = mg_get_response_info(client);
 
+	/* Check status - should be 404 Not Found */
 	ck_assert(client_ri != NULL);
 	ck_assert_int_eq(client_ri->status_code, 404);
+
+	/* Get body data (could exist, but does not have to) */
+	len = mg_read(client, client_data_buf, sizeof(client_data_buf));
+	ck_assert_int_ge(len, 0);
 
 	/* Close the client connection */
 	mg_close_connection(client);
@@ -4612,7 +4752,11 @@ START_TEST(test_minimal_tls_client)
 {
 	mark_point();
 
-#if !defined(NO_SSL)
+#if !defined(NO_SSL) /* dont run https test if SSL is not enabled */
+
+#if (!defined(__MACH__) || defined(LOCAL_TEST)) && !defined(OPENSSL_API_1_1)
+	/* dont run on Travis OSX worker with OpenSSL 1.0 */
+
 	/* Initialize the library */
 	mg_init_library(2);
 
@@ -4627,6 +4771,8 @@ START_TEST(test_minimal_tls_client)
 
 	/* Un-initialize the library */
 	mg_exit_library();
+
+#endif
 #endif
 
 	mark_point();

@@ -79,7 +79,7 @@ timer_add(struct mg_context *ctx,
 	 *        if next_time < now then we set next_time = now.
 	 *        The first callback will be so fast as possible (now)
 	 *        but the next callback on period
-	*/
+	 */
 	if (is_relative) {
 		next_time += now;
 	}
@@ -158,7 +158,7 @@ timer_thread_run(void *thread_func_param)
  * A faster loop (smaller sleep value) increases CPU load,
  * a slower loop (higher sleep value) decreases timer accuracy.
  */
-#ifdef _WIN32
+#if defined(_WIN32)
 		Sleep(10);
 #else
 		usleep(10000);
@@ -173,7 +173,7 @@ timer_thread_run(void *thread_func_param)
 }
 
 
-#ifdef _WIN32
+#if defined(_WIN32)
 static unsigned __stdcall timer_thread(void *thread_func_param)
 {
 	timer_thread_run(thread_func_param);
@@ -199,10 +199,22 @@ timer_thread(void *thread_func_param)
 TIMER_API int
 timers_init(struct mg_context *ctx)
 {
+	/* Initialize timers data structure */
 	ctx->timers =
 	    (struct ttimers *)mg_calloc_ctx(sizeof(struct ttimers), 1, ctx);
-	(void)pthread_mutex_init(&ctx->timers->mutex, NULL);
 
+	if (!ctx->timers) {
+		return -1;
+	}
+
+	/* Initialize mutex */
+	if (0 != pthread_mutex_init(&ctx->timers->mutex, NULL)) {
+		mg_free((void *)(ctx->timers));
+		return -1;
+	}
+
+	/* For some systems timer_getcurrenttime does some initialization
+	 * during the first call. Call it once now, ignore the result. */
 	(void)timer_getcurrenttime();
 
 	/* Start timer thread */

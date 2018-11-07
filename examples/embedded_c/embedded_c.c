@@ -1,8 +1,8 @@
 /*
-* Copyright (c) 2013-2017 the CivetWeb developers
-* Copyright (c) 2013 No Face Press, LLC
-* License http://opensource.org/licenses/mit-license.php MIT License
-*/
+ * Copyright (c) 2013-2017 the CivetWeb developers
+ * Copyright (c) 2013 No Face Press, LLC
+ * License http://opensource.org/licenses/mit-license.php MIT License
+ */
 
 /* Simple example program on how to use CivetWeb embedded into a C program. */
 #ifdef _WIN32
@@ -793,11 +793,11 @@ InformWebsockets(struct mg_context *ctx)
 
 
 #ifdef USE_SSL_DH
-#include "openssl/ssl.h"
 #include "openssl/dh.h"
 #include "openssl/ec.h"
-#include "openssl/evp.h"
 #include "openssl/ecdsa.h"
+#include "openssl/evp.h"
+#include "openssl/ssl.h"
 
 DH *
 get_dh2236()

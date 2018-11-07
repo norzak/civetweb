@@ -10,9 +10,9 @@
 
 #include "civetweb.h"
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <stdexcept>
 
 // forward declaration
 class CivetServer;
@@ -363,7 +363,7 @@ class CIVETWEB_API CivetServer
 	 * @param cookieName - cookie name to get the value from
 	 * @param cookieValue - cookie value is returned using thiis reference
 	 * @returns the size of the cookie value string read.
-	*/
+	 */
 	static int getCookie(struct mg_connection *conn,
 	                     const std::string &cookieName,
 	                     std::string &cookieValue);
@@ -373,7 +373,7 @@ class CIVETWEB_API CivetServer
 	 * @param conn - the connection information
 	 * @param headerName - header name to get the value from
 	 * @returns a char array which contains the header value as string
-	*/
+	 */
 	static const char *getHeader(struct mg_connection *conn,
 	                             const std::string &headerName);
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2017 the Civetweb developers
+/* Copyright (c) 2013-2018 the Civetweb developers
  * Copyright (c) 2004-2013 Sergey Lyubka
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,9 +23,9 @@
 #ifndef CIVETWEB_HEADER_INCLUDED
 #define CIVETWEB_HEADER_INCLUDED
 
-#define CIVETWEB_VERSION "1.11"
+#define CIVETWEB_VERSION "1.12"
 #define CIVETWEB_VERSION_MAJOR (1)
-#define CIVETWEB_VERSION_MINOR (11)
+#define CIVETWEB_VERSION_MINOR (12)
 #define CIVETWEB_VERSION_PATCH (0)
 
 #ifndef CIVETWEB_API
@@ -44,8 +44,8 @@
 #endif
 #endif
 
-#include <stdio.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,6 +93,10 @@ enum {
 	/* Collect server status information. */
 	/* Will only work, if USE_SERVER_STATS is set. */
 	MG_FEATURES_STATS = 0x100u,
+
+	/* Support on-the-fly compression. */
+	/* Will only work, if USE_ZLIB is set. */
+	MG_FEATURES_COMPRESSION = 0x200u,
 
 	/* Collect server status information. */
 	/* Will only work, if USE_SERVER_STATS is set. */
@@ -701,8 +705,10 @@ CIVETWEB_API int mg_get_server_ports(const struct mg_context *ctx,
 
 #if defined(MG_LEGACY_INTERFACE) /* 2017-04-02 */
 /* Deprecated: Use mg_get_server_ports instead. */
-CIVETWEB_API size_t
-mg_get_ports(const struct mg_context *ctx, size_t size, int *ports, int *ssl);
+CIVETWEB_API size_t mg_get_ports(const struct mg_context *ctx,
+                                 size_t size,
+                                 int *ports,
+                                 int *ssl);
 #endif
 
 
@@ -871,15 +877,65 @@ CIVETWEB_API int mg_send_chunk(struct mg_connection *conn,
                                unsigned int chunk_len);
 
 
-/* Send contents of the entire file together with HTTP headers. */
+/* Send contents of the entire file together with HTTP headers.
+ * Parameters:
+ *   conn: Current connection information.
+ *   path: Full path to the file to send.
+ * This function has been superseded by mg_send_mime_file
+ */
 CIVETWEB_API void mg_send_file(struct mg_connection *conn, const char *path);
 
 
+/* Send contents of the file without HTTP headers.
+ * The code must send a valid HTTP response header before using this function.
+ *
+ * Parameters:
+ *   conn: Current connection information.
+ *   path: Full path to the file to send.
+ *
+ * Return:
+ *   < 0   Error
+ */
+CIVETWEB_API int mg_send_file_body(struct mg_connection *conn,
+                                   const char *path);
+
+
 /* Send HTTP error reply. */
-CIVETWEB_API void mg_send_http_error(struct mg_connection *conn,
-                                     int status_code,
-                                     PRINTF_FORMAT_STRING(const char *fmt),
-                                     ...) PRINTF_ARGS(3, 4);
+CIVETWEB_API int mg_send_http_error(struct mg_connection *conn,
+                                    int status_code,
+                                    PRINTF_FORMAT_STRING(const char *fmt),
+                                    ...) PRINTF_ARGS(3, 4);
+
+
+/* Send "HTTP 200 OK" response header.
+ * After calling this function, use mg_write or mg_send_chunk to send the
+ * response body.
+ * Parameters:
+ *   conn: Current connection handle.
+ *   mime_type: Set Content-Type for the following content.
+ *   content_length: Size of the following content, if content_length >= 0.
+ *                   Will set transfer-encoding to chunked, if set to -1.
+ * Return:
+ *   < 0   Error
+ */
+CIVETWEB_API int mg_send_http_ok(struct mg_connection *conn,
+                                 const char *mime_type,
+                                 long long content_length);
+
+
+/* Send "HTTP 30x" redirect response.
+ * The response has content-size zero: do not send any body data after calling
+ * this function.
+ * Parameters:
+ *   conn: Current connection handle.
+ *   target_url: New location.
+ *   redirect_code: HTTP redirect type. Could be 301, 302, 303, 307, 308.
+ * Return:
+ *   < 0   Error (-1 send error, -2 parameter error)
+ */
+CIVETWEB_API int mg_send_http_redirect(struct mg_connection *conn,
+                                       const char *target_url,
+                                       int redirect_code);
 
 
 /* Send HTTP digest access authentication request.
@@ -1129,7 +1185,8 @@ struct mg_form_data_handler {
 	 *   user_data: Value of the member user_data of mg_form_data_handler
 	 *
 	 * Return value:
-	 *   TODO: Needs to be defined.
+	 *   The return code determines how the server should continue processing
+	 *   the current request (See MG_FORM_FIELD_HANDLE_*).
 	 */
 	int (*field_get)(const char *key,
 	                 const char *value,
@@ -1150,7 +1207,8 @@ struct mg_form_data_handler {
 	 *   user_data: Value of the member user_data of mg_form_data_handler
 	 *
 	 * Return value:
-	 *   TODO: Needs to be defined.
+	 *   The return code determines how the server should continue processing
+	 *   the current request (See MG_FORM_FIELD_HANDLE_*).
 	 */
 	int (*field_store)(const char *path, long long file_size, void *user_data);
 
@@ -1164,7 +1222,7 @@ struct mg_form_data_handler {
 #if defined(MG_LEGACY_INTERFACE) /* 2017-10-05 */
 enum {
 	/* Skip this field (neither get nor store it). Continue with the
-     * next field. */
+	 * next field. */
 	FORM_FIELD_STORAGE_SKIP = 0x0,
 	/* Get the field value. */
 	FORM_FIELD_STORAGE_GET = 0x1,
@@ -1177,7 +1235,7 @@ enum {
 /* New nomenclature */
 enum {
 	/* Skip this field (neither get nor store it). Continue with the
-     * next field. */
+	 * next field. */
 	MG_FORM_FIELD_STORAGE_SKIP = 0x0,
 	/* Get the field value. */
 	MG_FORM_FIELD_STORAGE_GET = 0x1,
@@ -1186,6 +1244,18 @@ enum {
 	/* Stop parsing this request. Skip the remaining fields. */
 	MG_FORM_FIELD_STORAGE_ABORT = 0x10
 };
+
+/* Return values for "field_get" and "field_store" */
+enum {
+	/* Only "field_get": If there is more data in this field, get the next
+	 * chunk. Otherwise: handle the next field. */
+	MG_FORM_FIELD_HANDLE_GET = 0x1,
+	/* Handle the next field */
+	MG_FORM_FIELD_HANDLE_NEXT = 0x8,
+	/* Stop parsing this request */
+	MG_FORM_FIELD_HANDLE_ABORT = 0x10
+};
+
 
 /* Process form data.
  * Returns the number of fields handled, or < 0 in case of an error.
@@ -1318,6 +1388,7 @@ struct mg_client_options {
 	int port;
 	const char *client_cert;
 	const char *server_cert;
+	const char *host_name;
 	/* TODO: add more data */
 };
 

@@ -2,7 +2,7 @@
 Overview
 =====
 
-CivetWeb is small and easy to use web server.
+CivetWeb is a small and easy to use web server.
 It may be embedded into C/C++ host applications or used as a stand-alone
 server. See `Embedding.md` for information on embedding CivetWeb into
 host applications.
@@ -24,26 +24,26 @@ For UNIX and Mac, CivetWeb does not detach from the terminal.
 Pressing `Ctrl-C` keys will stop the server.
 
 On Windows, CivetWeb iconifies itself to the system tray icon when started.
-Right-click on the icon pops up a menu, where it is possible to stop
-CivetWeb, or configure it, or install it as Windows service.
+Right-clicking on the icon pops up a menu, where it is possible to stop
+CivetWeb, configure it, or install it as Windows service.
 
 When started without options, the server exposes the local directory at
 [http](http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol) port 8080.
 Thus, the easiest way to share a folder on Windows is to copy `CivetWeb.exe`
 to this folder, double-click the exe, and launch a browser at
 [http://localhost:8080](http://localhost:8080). Note that 'localhost' should
-be changed to a machine's name if a folder is accessed from other computer.
+be changed to a machine's name if a folder is accessed from another computer.
 
 When started, CivetWeb first searches for the configuration file.
-If configuration file is specified explicitly in the command line, i.e.
-`CivetWeb path_to_config_file`, then specified configuration file is used.
-Otherwise, CivetWeb would search for file `CivetWeb.conf` in the same directory
+If a configuration file is specified explicitly in the command line, i.e.
+`CivetWeb path_to_config_file`, then the specified configuration file is used.
+Otherwise, CivetWeb will search for the file `CivetWeb.conf` in the same directory that
 the executable is located, and use it. This configuration file is optional.
 
 The configuration file is a sequence of lines, each line containing one
 command line argument name and the corresponding value.
 Empty lines, and lines beginning with `#`, are ignored.
-Here is the example of `CivetWeb.conf` file:
+Here is the example of a `CivetWeb.conf` file:
 
     document_root c:\www
     listening_ports 80,443s
@@ -57,7 +57,7 @@ For example: The above `CivetWeb.conf` file is used, and CivetWeb started as
 `CivetWeb -document_root D:\web`. Then the `D:\web` directory will be served
 as document root, because command line options take priority over the
 configuration file. The configuration options section below provides a good
-overview of the CivetWeb features.
+overview of CivetWeb features.
 
 Note that configuration options on the command line must start with `-`,
 but their names are the same as in the config file. All option names are
@@ -109,9 +109,9 @@ The following options are supported in `civetweb.c`. They can be used for
 the stand-alone executable as well as for applications embedding CivetWeb.
 
 ### cgi\_pattern `**.cgi$|**.pl$|**.php$`
-All files that match `cgi_pattern` are treated as CGI files. Default pattern
+All files that match `cgi_pattern` are treated as CGI files. The default pattern
 allows CGI files be anywhere. To restrict CGIs to a certain directory,
-use `/path/to/cgi-bin/**.cgi` as pattern. Note that the full file path is
+use `/path/to/cgi-bin/**.cgi` as the pattern. Note that the full file path is
 matched against the pattern, not the URI.
 
 ### cgi\_environment
@@ -120,8 +120,8 @@ addition to standard ones. The list must be comma-separated list
 of name=value pairs, like this: `VARIABLE1=VALUE1,VARIABLE2=VALUE2`.
 
 ### put\_delete\_auth\_file
-Passwords file for PUT and DELETE requests. Without password file, it will not
-be possible to, PUT new files to the server or DELETE existing ones. PUT and
+Passwords file for PUT and DELETE requests. Without a password file, it will not
+be possible to PUT new files to the server or DELETE existing ones. PUT and
 DELETE requests might still be handled by Lua scripts and CGI paged.
 
 ### cgi\_interpreter
@@ -140,7 +140,7 @@ working directory is the directory where the CivetWeb executable is located.
 
 If all CGIs use the same interpreter, for example they are all PHP, it is
 more efficient to set `cgi_interpreter` to the path to `php-cgi.exe`.
-The  shebang line in the CGI scripts can be omitted in this case.
+The shebang line in the CGI scripts can be omitted in this case.
 Note that PHP scripts must use `php-cgi.exe` as executable, not `php.exe`.
 
 ### protect\_uri
@@ -162,7 +162,7 @@ will be accepted.
 All files that match `ssi_pattern` are treated as Server Side Includes (SSI).
 
 SSI is a simple interpreted server-side scripting language which is most
-commonly used to include the contents of another file into a web page.
+commonly used to include the contents of another file in a web page.
 It can be useful when it is desirable to include a common piece
 of code throughout a website, for example, headers and footers.
 
@@ -279,7 +279,7 @@ To learn more about subnet masks, see the
 [Wikipedia page on Subnetwork](http://en.wikipedia.org/wiki/Subnetwork).
 
 ### extra\_mime\_types
-Extra mime types, in tha form `extension1=type1,exten-sion2=type2,...`.
+Extra mime types, in the form `extension1=type1,exten-sion2=type2,...`.
 See the [Wikipedia page on Internet media types](http://en.wikipedia.org/wiki/Internet_media_type).
 Extension must include a leading dot. Example:
 `.cpp=plain/text,.java=plain/text`
@@ -307,7 +307,7 @@ e.g. `[::1]:8080` for the IPv6 loopback interface.
 all interfaces, both IPv4 and IPv6, use either the configuration
 `80,[::]:80` (create one socket for IPv4 and one for IPv6 only),
 or `+80` (create one socket for both, IPv4 and IPv6). 
-The `+`-notation to use IPv4 and IPv6 will only work in no network
+The `+` notation to use IPv4 and IPv6 will only work if no network
 interface is specified. Depending on your operating system version
 and IPv6 network environment, some configurations might not work
 as expected, so you have to test to find the configuration most 
@@ -411,6 +411,11 @@ Currently keep\_alive\_timeout\_ms is ignored if enable\_keep\_alive is no,
 but future versions my drop the enable\_keep\_alive configuration value and
 automatically use keep-alive if keep\_alive\_timeout\_ms is not 0.
 
+### cgi\_timeout\_ms
+Maximum allowed runtime for CGI scripts.  CGI processes are terminated by
+the server after this time.  The default is "no timeout", so scripts may
+run or block for undefined time.
+
 ### linger\_timeout\_ms
 Set TCP socket linger timeout before closing sockets (SO\_LINGER option).
 The configured value is a timeout in milliseconds. Setting the value to 0
@@ -479,7 +484,7 @@ script on changes of the server state. See example lua script :
 [background.lua](https://github.com/civetweb/civetweb/blob/master/test/background.lua).
 
 Additional functions available in background script :
-sleep, root path, script name, isterminated
+sleep, root path, script name, is terminated
 
 ### lua\_background\_script\_params `param1=1,param2=2`
 Can add dynamic parameters to background script.
@@ -526,6 +531,8 @@ If set in any other way, the result is unspecified.
 
 ### error\_pages
 This option may be used to specify a directory for user defined error pages.
+To specify a directory, make sure the name ends with a backslash (Windows) 
+or slash (Linux, MacOS, ...).
 The error pages may be specified for an individual http status code (e.g.,
 404 - page requested by the client not found), a group of http status codes
 (e.g., 4xx - all client errors) or all errors. The corresponding error pages
@@ -548,12 +555,12 @@ Set the maximum time (in seconds) a cache may store a static files.
 
 This option will set the `Cache-Control: max-age` value for static files.
 Dynamically generated content, i.e., content created by a script or callback,
-must send cache control headers by themselfes.
+must send cache control headers by themselves.
 
 A value >0 corresponds to a maximum allowed caching time in seconds.
 This value should not exceed one year (RFC 2616, Section 14.21).
 A value of 0 will send "do not cache" headers for all static files.
-For values <0 and values >31622400, the behavior is undefined.
+For values <0 and values >31622400, the behaviour is undefined.
 
 ### strict\_transport\_security\_max\_age
 
@@ -565,7 +572,7 @@ send HTTP headers on their own.
 
 The time is specified in seconds. If this configuration is not set, 
 or set to -1, no `Strict-Transport-Security` header will be sent.
-For values <-1 and values >31622400, the behavior is undefined.
+For values <-1 and values >31622400, the behaviour is undefined.
 
 ### decode\_url `yes`
 URL encoded request strings are decoded in the server, unless it is disabled
@@ -718,10 +725,25 @@ page, one can write:
       URI is <?=mg.request_info.uri?>
     </p>
 
-Lua is known for it's speed and small size. CivetWeb currently uses Lua
-version 5.2.4. The documentation for it can be found in the
-[Lua 5.2 reference manual](http://www.lua.org/manual/5.2/).
+From version 1.11, CivetWeb supports "Kepler Syntax" in addition to the
+traditional Lua pages syntax of CivetWeb. Kepler Syntax uses `<?lua ?>`
+or `<% %>` blocks for script elements (corresponding to `<? ?>` above)
+and `<?lua= ?>` or `<%= %>` for variable content (corresponding to `<?= ?>`).
 
+    <ul>
+       <% for key, value in pairs(mg.request_info) do %>
+       <li> <%= key %>: <%= value %> </li>
+       <% end %>
+    </ul>
+    
+Currently the extended "Kepler Syntax" is available only for HTML (see 
+note on HTTP headers below).
+
+Lua is known for it's speed and small size. The default Lua version for
+CivetWeb is Lua 5.2.4. The documentation for it can be found in the
+[Lua 5.2 reference manual](http://www.lua.org/manual/5.2/). However,
+CivetWeb can be built with Lua 5.1, 5.2, 5.3, 5.4 (currently pre-release)
+and LuaJIT.
 
 Note that this example uses function `mg.write()`, which sends data to the
 web client. Using `mg.write()` is the way to generate web content from inside
@@ -739,7 +761,11 @@ is an example for a plain Lua script.
 [page2.lp](https://github.com/civetweb/civetweb/blob/master/test/page2.lp)
 is an example for a Lua Server Page.
 
-Both examples show the content of the `mg.request_info` object as the page
+[page4kepler.lp](https://github.com/civetweb/civetweb/blob/master/test/page4kepler.lp)
+is a Lua Server Page showing "Kepler Syntax" in addition to traditional CivetWeb
+Lua Server Pages syntax.
+
+These examples show the content of the `mg.request_info` object as the page
 content. Please refer to `struct mg_request_info` definition in
 [CivetWeb.h](https://github.com/civetweb/civetweb/blob/master/include/civetweb.h)
 to see additional information on the elements of the `mg.request_info` object.
@@ -751,42 +777,44 @@ in Lua. Examples are given in
 [page.lp](https://github.com/civetweb/civetweb/blob/master/test/page.lp).
 
 
+
 CivetWeb exports the following functions to Lua:
 
 mg (table):
 
-    mg.read()                  -- reads a chunk from POST data, returns it as a string
-    mg.write(str)              -- writes string to the client
+    mg.read()                   -- reads a chunk from POST data, returns it as a string
+    mg.write(str)               -- writes string to the client
     mg.include(filename, [pathtype]) -- include another Lua Page file (Lua Pages only)
-                               -- pathtype can be "abs", "rel"/"file" or "virt[ual]"
-                               -- like defined for SSI #include
-    mg.redirect(uri)           -- internal redirect to a given URI
-    mg.onerror(msg)            -- error handler, can be overridden
-    mg.version                 -- a string that holds CivetWeb version
-    mg.document_root           -- a string that holds the document root directory
-    mg.auth_domain             -- a string that holds the HTTP authentication domain
-    mg.get_var(str, varname)   -- extract variable from (query) string
-    mg.get_cookie(str, cookie) -- extract cookie from a string
-    mg.get_mime_type(filename) -- get MIME type of a file
-    mg.get_info(infotype)      -- get server status information
-    mg.send_file(filename)     -- send a file, including MIME type
-    mg.url_encode(str)         -- URL encode a string
-    mg.url_decode(str, [form]) -- URL decode a string. If form=true, replace + by space.
-    mg.base64_encode(str)      -- BASE64 encode a string
-    mg.base64_decode(str)      -- BASE64 decode a string
-    mg.md5(str)                -- return the MD5 hash of a string
-    mg.keep_alive(bool)        -- allow/forbid to use http keep-alive for this request
-    mg.request_info            -- a table with the following request information
-         .remote_addr          -- IP address of the client as string
-         .remote_port          -- remote port number
-         .server_port          -- server port number
-         .request_method       -- HTTP method (e.g.: GET, POST)
-         .http_version         -- HTTP protocol version (e.g.: 1.1)
-         .uri                  -- resource name
-         .query_string         -- query string if present, nil otherwise
-         .script_name          -- name of the Lua script
-         .https                -- true if accessed by https://, false otherwise
-         .remote_user          -- user name if authenticated, nil otherwise
+                                -- pathtype can be "abs", "rel"/"file" or "virt[ual]"
+                                -- like defined for SSI #include
+    mg.redirect(uri)            -- internal redirect to a given URI
+    mg.onerror(msg)             -- error handler, can be overridden
+    mg.version                  -- a string that holds CivetWeb version
+    mg.document_root            -- a string that holds the document root directory
+    mg.auth_domain              -- a string that holds the HTTP authentication domain
+    mg.get_var(str, varname)    -- extract variable from (query) string
+    mg.get_cookie(str, cookie)  -- extract cookie from a string
+    mg.get_mime_type(filename)  -- get MIME type of a file
+    mg.get_info(infotype)       -- get server status information
+    mg.send_file(filename)      -- send a file, including all required HTTP headers
+    mg.send_file_body(filename) -- send a file, excluding HTTP headers
+    mg.url_encode(str)          -- URL encode a string
+    mg.url_decode(str, [form])  -- URL decode a string. If form=true, replace + by space.
+    mg.base64_encode(str)       -- BASE64 encode a string
+    mg.base64_decode(str)       -- BASE64 decode a string
+    mg.md5(str)                 -- return the MD5 hash of a string
+    mg.keep_alive(bool)         -- allow/forbid to use http keep-alive for this request
+    mg.request_info             -- a table with the following request information
+         .remote_addr           -- IP address of the client as string
+         .remote_port           -- remote port number
+         .server_port           -- server port number
+         .request_method        -- HTTP method (e.g.: GET, POST)
+         .http_version          -- HTTP protocol version (e.g.: 1.1)
+         .uri                   -- resource name
+         .query_string          -- query string if present, nil otherwise
+         .script_name           -- name of the Lua script
+         .https                 -- true if accessed by https://, false otherwise
+         .remote_user           -- user name if authenticated, nil otherwise
 
 connect (function):
 
@@ -811,17 +839,42 @@ connect (function):
 All filename arguments are either absolute or relative to the CivetWeb working
 directory (not the document root or the Lua script/page file).
     
-**IMPORTANT: CivetWeb does not send HTTP headers for Lua pages. Therefore,
-every Lua Page must begin with a HTTP reply line and headers**, like this:
+To serve a Lua Page, CivetWeb creates a Lua context. That context is used for
+all Lua blocks within the page. That means, all Lua blocks on the same page
+share the same context. If one block defines a variable, for example, that
+variable is visible in all blocks that follow.
+
+
+**Important note on HTTP headers:**
+
+Lua scripts MUST send HTTP headers themselves, e.g.:
+
+    mg.write('HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n')
+
+Lua Server Pages CAN send HTTP reply headers, like this:
+
+    HTTP/1.0 200 OK
+    Content-Type: text/html
+        
+    <html><body>
+      ... the rest of the web page ...
+
+or using Lua code:
 
     <? mg.write('HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n') ?>
     <html><body>
       ... the rest of the web page ...
 
-To serve a Lua Page, CivetWeb creates a Lua context. That context is used for
-all Lua blocks within the page. That means, all Lua blocks on the same page
-share the same context. If one block defines a variable, for example, that
-variable is visible in all block that follow.
+or Lua Server Pages generating HTML content MAY skip the HTTP header lines.
+In this case, CivetWeb automatically creates a "200 OK"/"Content-Type: text/html"
+reply header. In this case, the document should start with "<!DOCTYPE html>" 
+or "<html".
+
+Currently the extended "Kepler Syntax" is available only for text/html pages
+not sending their own HTTP headers. Thus, "Kepler Syntax" can only be used for
+HTML pages, while traditional CivetWeb syntax can be used to send a content-type
+header and generate any kind of file.
+
 
 ## Websockets for Lua
 CivetWeb offers support for websockets in Lua as well. In contrast to plain
@@ -836,7 +889,7 @@ All function are called with one argument of type table with at least one field
 "client" to identify the client. When "open" is called, the argument table additionally
 contains the "request_info" table as defined above. For the "data" handler, an
 additional field "data" is available. The functions "open", "ready" and "data"
-must return true in order to keep the connetion open.
+must return true in order to keep the connection open.
 
 Lua websocket pages do support single shot (timeout) and interval timers.
 

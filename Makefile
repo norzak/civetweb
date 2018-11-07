@@ -17,13 +17,16 @@ BUILD_DIR = out
 
 # Installation directories by convention
 # http://www.gnu.org/prep/standards/html_node/Directory-Variables.html
-PREFIX = /usr/local
+PREFIX ?= /usr/local
 EXEC_PREFIX = $(PREFIX)
 BINDIR = $(EXEC_PREFIX)/bin
 DATAROOTDIR = $(PREFIX)/share
 DOCDIR = $(DATAROOTDIR)/doc/$(CPROG)
-SYSCONFDIR = $(PREFIX)/etc
+SYSCONFDIR ?= $(PREFIX)/etc
 HTMLDIR = $(DOCDIR)
+INCLUDEDIR = $(DESTDIR)$(PREFIX)/include
+LIBDIR = $(DESTDIR)$(EXEC_PREFIX)/lib
+PID_FILE ?= /var/run/$(CPROG).pid
 
 # build tools
 MKDIR = mkdir -p
@@ -37,6 +40,7 @@ RMRF = rm -rf
 # later becomes /.
 DOCUMENT_ROOT = $(HTMLDIR)
 PORTS = 8080
+USE_STACK_SIZE ?= 102400
 
 BUILD_DIRS = $(BUILD_DIR) $(BUILD_DIR)/src $(BUILD_DIR)/resources
 
@@ -48,6 +52,7 @@ UNIT_TEST_SOURCES = test/unit_test.c
 SOURCE_DIRS =
 
 OBJECTS = $(LIB_SOURCES:.c=.o) $(APP_SOURCES:.c=.o)
+HEADERS = include/civetweb.h
 BUILD_RESOURCES =
 
 # The unit tests include the source files directly to get visibility to the
@@ -60,7 +65,7 @@ BUILD_DIRS += $(BUILD_DIR)/test
 endif
 
 # only set main compile options if none were chosen
-CFLAGS += -Wall -Wextra -Wshadow -Wformat-security -Winit-self -Wmissing-prototypes -D$(TARGET_OS) -Iinclude $(COPT) -DUSE_STACK_SIZE=102400
+CFLAGS += -Wall -Wextra -Wshadow -Wformat-security -Winit-self -Wmissing-prototypes -D$(TARGET_OS) -Iinclude $(COPT) -DUSE_STACK_SIZE=$(USE_STACK_SIZE)
 
 LIBS = -lpthread -lm
 
@@ -72,6 +77,7 @@ endif
 
 ifdef WITH_CPP
   OBJECTS += src/CivetServer.o
+  HEADERS += include/CivetServer.h
   LCC = $(CXX)
 else
   LCC = $(CC)
@@ -83,8 +89,14 @@ ifdef WITH_ALL
   WITH_LUA = 1
   WITH_DUKTAPE = 1
   WITH_SERVER_STATS = 1
+  WITH_ZLIB = 1
   WITH_EXPERIMENTAL = 1
   #WITH_CPP is not defined, ALL means only real features, not wrappers
+endif
+
+# Use Lua?
+ifdef WITH_LUA_VERSION
+  WITH_LUA = 1
 endif
 
 ifdef WITH_LUA_SHARED
@@ -101,7 +113,12 @@ ifdef WITH_LUA
   include resources/Makefile.in-lua
 endif
 
+# Use Duktape?
 ifdef WITH_SSJS
+  WITH_DUKTAPE = 1
+endif
+
+ifdef WITH_DUKTAPE_VERSION
   WITH_DUKTAPE = 1
 endif
 
@@ -113,6 +130,17 @@ ifdef WITH_DUKTAPE
   include resources/Makefile.in-duktape
 endif
 
+# Use zlib?
+ifdef WITH_COMPRESSION
+  WITH_ZLIB = 1
+endif
+
+ifdef WITH_ZLIB
+  LIBS += -lz
+  CFLAGS += -DUSE_ZLIB
+endif
+
+# Other features
 ifdef WITH_EXPERIMENTAL
   CFLAGS += -DMG_EXPERIMENTAL_INTERFACES
 endif
@@ -135,6 +163,11 @@ ifdef WITH_SERVER_STATS
   CFLAGS += -DUSE_SERVER_STATS
 endif
 
+ifdef WITH_DAEMONIZE
+  CFLAGS += -DDAEMONIZE -DPID_FILE=\"$(PID_FILE)\"
+endif
+
+# File names
 ifdef CONFIG_FILE
   CFLAGS += -DCONFIG_FILE=\"$(CONFIG_FILE)\"
 endif
@@ -190,8 +223,11 @@ help:
 	@echo "make build               compile"
 	@echo "make install             install on the system"
 	@echo "make clean               clean up the mess"
+	@echo "make install-headers     install headers"
 	@echo "make lib                 build a static library"
+	@echo "make install-lib         install the static library"
 	@echo "make slib                build a shared library"
+	@echo "make install-slib        install the shared library"
 	@echo "make unit_test           build unit tests executable"
 	@echo ""
 	@echo " Make Options"
@@ -200,13 +236,16 @@ help:
 	@echo "   WITH_LUA_VERSION=502  build with Lua 5.2.x (501 for Lua 5.1.x to 503 for 5.3.x)"
 	@echo "   WITH_DUKTAPE=1        build with Duktape support; include as static library"
 	@echo "   WITH_DUKTAPE_SHARED=1 build with Duktape support; use libduktape1.3.so"
-#	@echo "   WITH_DUKTAPE_VERSION=103 build with Duktape 1.3.x"
+	@echo "   WITH_DUKTAPE_VERSION=108 build with Duktape 1.8.x"
 	@echo "   WITH_DEBUG=1          build with GDB debug support"
 	@echo "   WITH_IPV6=1           with IPV6 support"
 	@echo "   WITH_WEBSOCKET=1      build with web socket support"
 	@echo "   WITH_SERVER_STATS=1   build includes support for server statistics"
+	@echo "   WITH_ZLIB=1           build includes support for on-the-fly compression using zlib"
 	@echo "   WITH_CPP=1            build library with c++ classes"
 	@echo "   WITH_EXPERIMENTAL=1   build with experimental features"
+	@echo "   WITH_DAEMONIZE=1      build with daemonize."
+	@echo "   PID_FILE=/path        PID file path of daemon."
 	@echo "   CONFIG_FILE=file      use 'file' as the config file"
 	@echo "   CONFIG_FILE2=file     use 'file' as the backup config file"
 	@echo "   DOCUMENT_ROOT=/path   document root override when installing"
@@ -243,6 +282,19 @@ install: $(HTMLDIR)/index.html $(SYSCONFDIR)/civetweb.conf
 	install -m 644 *.md "$(DOCDIR)"
 	install -d -m 755 "$(BINDIR)"
 	install -m 755 $(CPROG) "$(BINDIR)/"
+
+install-headers:
+	install -m 644 $(HEADERS) "$(INCLUDEDIR)"
+
+install-lib: lib$(CPROG).a
+	install -m 644 $< "$(LIBDIR)"
+
+install-slib: lib$(CPROG).so
+	$(eval version=$(shell grep -w "define CIVETWEB_VERSION" include/civetweb.h | sed 's|.*VERSION "\(.*\)"|\1|g'))
+	$(eval major=$(shell echo $(version) | cut -d'.' -f1))
+	install -m 644 $< "$(LIBDIR)"
+	install -m 777 $<.$(major) "$(LIBDIR)"
+	install -m 777 $<.$(version).0 "$(LIBDIR)"
 
 # Install target we do not want to overwrite
 # as it may be an upgrade
@@ -286,6 +338,8 @@ distclean: clean
 	@$(RMRF) VS2012/Release VS2012/*/Release  VS2012/*/*/Release
 	$(RMF) $(CPROG) lib$(CPROG).so lib$(CPROG).a *.dmg *.msi *.exe lib$(CPROG).dll lib$(CPROG).dll.a
 	$(RMF) $(UNIT_TEST_PROG)
+
+$(LIB_OBJECTS): CFLAGS += -fPIC
 
 lib$(CPROG).a: CFLAGS += -fPIC
 lib$(CPROG).a: $(LIB_OBJECTS)
